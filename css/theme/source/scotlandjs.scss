@@ -1,0 +1,60 @@
+/**
+ * BartJS theme for reveal.js.
+ *
+ */
+
+
+// Default mixins and settings -----------------
+@import "mixins";
+@import "settings";
+// ---------------------------------------------
+
+
+@import url(https://fonts.googleapis.com/css?family=Exo+2);
+
+
+// Override theme settings (see ../template/settings.scss)
+$backgroundColor: #1b1b1b;
+
+$mainFont: 'Exo 2', sans-serif;
+$linkColor: #3d93d0;
+$linkColorHover: lighten( $linkColor, 20% );
+$headingFont: $mainFont;
+$headingTextShadow: none;
+$headingLetterSpacing: 0em;
+$headingTextTransform: none;
+$selectionBackgroundColor: #3d93d0;
+$mainFontSize: 40px;
+
+
+// Theme template ------------------------------
+@import "../template/theme";
+// ---------------------------------------------
+
+// Logo in bottom left corner.
+body:before {
+  position: absolute;
+  content: "";
+  display: block;
+  background: url("/assets/bart.svg") left top no-repeat;
+  width: 150px;
+  height: 80px;
+  bottom: 0px;
+  left: 0px;
+  background-size: 150px 150px;
+  z-index: 9999;
+}
+
+// Tag in upper right corner
+
+body:after {
+  position: absolute;
+  content: "#sjsStian";
+  display: block;
+  font-size: 2em;
+  font-family: 'Exo 2', sans-serif;
+  color: #3d93d0;
+  top: 10px;
+  right: 20px;
+  z-index: 9999;
+}

@@ -1,0 +1,1247 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+
+  <title>Making Math Come Alive With JavaScript</title>
+
+  <link rel="stylesheet" href="./css/reveal.min.css">
+  <link rel="stylesheet" href="./css/theme/scotlandjs.css">
+  <link rel="stylesheet" href="./css/tomorrow-night-bright.css">
+  <style>
+    div.code, div.canvas {
+      margin-top: 75px;
+      height: 500px;
+      background: #000;
+    }
+    div.code {
+      width: 63%;
+      float: left;
+      margin-right: 2%;
+      position: relative;
+    }
+    .code .code-fragment {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .code.code-transparent {
+      background: transparent;
+    }
+    .canvas {
+      width: 35%;
+      float: right;
+    }
+    .reveal code.big {
+      font-size: 150%;
+      line-height: 150%;
+    }
+    .canvas.full {
+      width: 100%;
+    }
+    input {
+      margin: 0;
+      width: 10%;
+      height: 1em;
+      font-size: 100%;
+      text-align: center;
+      background: transparent;
+      border: none;
+      color: #fff;
+    }
+    #box1 {
+      fill: #f00;
+      transition: transform 1s;
+      transform-origin: 50% 50%;
+    }
+    .transform1 {
+      transform: translate(175px, 200px);
+    }
+    .transform2 {
+      transform: translate(175px, 200px)
+                 scale(2);
+    }
+    .transform3 {
+      transform: translate(175px, 200px)
+                 scale(2)
+                 rotate(45deg);
+    }
+    .transform4 {
+      transform: translate(175px, 200px)
+                 scale(2)
+                 rotate(45deg)
+                 skew(15deg, 15deg);
+    }
+    .reveal .row1.highlighted {
+      background: rgba(0, 255, 0, 0.6);
+    }
+    .highlight1.highlighted, .highlight-pointA.highlighted1, .highlight-pointB1.highlighted {
+      fill: rgba(0, 255, 0, 0.6) !important;
+    }
+    .reveal .row2.highlighted {
+      background: rgba(0, 255, 255, 0.6);
+    }
+    .highlight2.highlighted, .highlight-pointA.highlighted2,.highlight-pointB2.highlighted {
+      fill: rgba(0, 255, 255, 0.6) !important;
+    }
+    .reveal .row3.highlighted {
+      background: rgba(255, 0, 255, 0.6);
+    }
+    .highlight3.highlighted, .highlight-pointA.highlighted3, .highlight-pointB3.highlighted {
+      fill: rgba(255, 0, 255, 0.6) !important;
+    }
+    .reveal .row1, .reveal .row2, .reveal .row3 {
+      margin-bottom: 1em;
+      width: 50%;
+      margin-left: 25%;
+    }
+    #translate-matrix-box, #scale-matrix-box, #rotate-matrix-box, #skew-matrix-box {
+      fill: #f00;
+      transition: transform 1s;
+    }
+    #scale-translate-slide .highlighted, #translate-scale-slide .highlighted {
+      fill: rgba(0, 255, 0, 0.6) !important;
+    }
+    #scale-translate-slide .highlighted2, #translate-scale-slide .highlighted2 {
+      fill: rgba(0, 255, 255, 0.6) !important;
+    }
+    .coordinate-system rect {
+      fill: #000;
+    }
+    .coordinate-system text {
+      font-size: 75%;
+      font-family: 'monospace';
+      fill: #fff;
+    }
+    .coordinate-system path {
+      stroke: #fff;
+      stroke-width: 4;
+    }
+    .coordinate-system circle {
+      fill: #f00;
+    }
+    .coordinate-system .point rect, .coordinate-system .point .text {
+      transition: transform 1s;
+    }
+    .coordinate-system .point rect {
+      fill: #f00;
+    }
+    #origin-scale1 .point.scale-transform rect {
+      transform: scale(2, 2);
+    }
+    #origin-scale1 .point.scale-transform .text {
+      transform: translate(160px, 160px);
+    }
+    #origin-scale2 .point rect {
+      transform-origin: 150px 150px;
+    }
+    #origin-scale2 .point.scale-transform rect {
+      transform: scale(2, 2);
+    }
+    #origin-scale2 .point.scale-transform .text {
+      transform: translate(15px, 15px);
+    }
+  </style>
+
+  <script src="./lib/js/head.min.js"></script>
+  <script src="./js/reveal.min.js"></script>
+  <script src="./js/prefixfree.js"></script>
+  <script src="./js/snap.svg-min.js"></script>
+  <script src="./js/bacon.min.js"></script>
+  <script>
+    var pad = function (str) {
+      str = ''+str;
+      var padTo = 7;
+      var padChar = '\u00A0';
+      var diff = padTo - str.length;
+      if(diff < 1) {
+        return str;
+      }
+      var right = Math.ceil(diff/2);
+      var left = Math.floor(diff/2);
+      for(var i = 0; i < right; i++) {
+        str = padChar+str;
+      }
+      for(var j = 0; j < left; j++) {
+        str+=padChar;
+      }
+      return str;
+    };
+    var degToRad = function (deg) {
+      return Math.PI * (deg / 180.0);
+    };
+    var svgMatrix = function (c, matrix) {
+      var fill = '#fff';
+      var font = 'monospace';
+
+      var widthOfMatrix = (240 + (matrix[0].length-1)*220);
+
+      var lb = c.path('M35,5L5,5L5,225L35,225');
+      var rb = c.path('M' + (widthOfMatrix - 30) + ',5L'+widthOfMatrix+',5L'+widthOfMatrix+',225L'+(widthOfMatrix - 30)+',225');
+      bracketAttr = {
+        stroke: '#fff',
+        strokeWidth: 10,
+        fill: 'none'
+      };
+
+      lb.attr(bracketAttr);
+      rb.attr(bracketAttr);
+
+
+      var makeRow = function (row, x, y) {
+        var rAttr = {
+          fill: fill,
+          fontSize: '50px',
+          fontFamily: font
+        };
+
+        var elems = c.group();
+        var textElem;
+        for(var i = 0; i < row.length; i++) {
+          textElem = c.text(x + 220*i, y, pad(row[i]));
+          textElem.attr(rAttr);
+          textElem.node.classList.add('elem'+(i+1));
+          elems.add(textElem);
+        }
+        return elems;
+      };
+
+      var matrixElem = c.group();
+      matrixElem.add(lb);
+      var row;
+      for(var i = 0; i < matrix.length; i++) {
+        row = makeRow(matrix[i], 20, 52.5 + 75*i);
+        row.node.classList.add('row'+(i+1));
+        matrixElem.add(row);
+      }
+      matrixElem.add(rb);
+      return matrixElem;
+    };
+
+    var svgMatrixMult = function (c, matrix, point) {
+      var matrixElem = svgMatrix(c, matrix);
+
+      var row1 = c.select('.row1');
+      var highlightRow1 = c.rect(row1.getBBox().x, row1.getBBox().y, row1.getBBox().w, row1.getBBox().h);
+      highlightRow1.insertBefore(row1);
+      highlightRow1.attr({fill: 'none'});
+      highlightRow1.node.classList.add('highlight1');
+
+      var row2 = c.select('.row2');
+      var highlightRow2 = c.rect(row2.getBBox().x, row2.getBBox().y, row2.getBBox().w, row2.getBBox().h);
+      highlightRow2.insertBefore(row2);
+      highlightRow2.attr({fill: 'none'});
+      highlightRow2.node.classList.add('highlight2');
+
+      var row3 = c.select('.row3');
+      var highlightRow3 = c.rect(row3.getBBox().x, row3.getBBox().y, row3.getBBox().w, row3.getBBox().h);
+      highlightRow3.insertBefore(row3);
+      highlightRow3.attr({fill: 'none'});
+      highlightRow3.node.classList.add('highlight3');
+
+      var mult = c.circle(matrixElem.getBBox().w + 30, matrixElem.getBBox().cy, 10);
+      mult.attr({fill: '#fff'});
+
+      var pointA = svgMatrix(c, point);
+      var movePointA = new Snap.Matrix();
+      movePointA.translate(matrixElem.getBBox().w + 50, 0);
+      pointA.transform(movePointA.toTransformString());
+      pointA.node.classList.add('pointA');
+
+      var pointAHighlightRow = c.rect(pointA.select('.row1').getBBox().cx - 30, pointA.select('.row1').getBBox().y, 60, pointA.select('.row1').getBBox().h * 3.75);
+      pointA.add(pointAHighlightRow);
+      pointAHighlightRow.insertBefore(pointA.select('.row1'));
+      pointAHighlightRow.attr({fill: 'none'});
+      pointAHighlightRow.node.classList.add('highlight-pointA');
+
+      var equals = c.text(movePointA.x(pointA.getBBox().w + 15, pointA.getBBox().cy + 15), movePointA.y(pointA.getBBox().w, pointA.getBBox().cy + 15), '=');
+      equals.attr({
+        fill: '#fff',
+        fontSize: '50px',
+        fontFamily: 'monospace'
+      });
+
+      var pointB = svgMatrix(c, [['x\''], ['y\''], [1]]);
+      var movePointB = new Snap.Matrix();
+      movePointB.translate(matrixElem.getBBox().w + pointA.getBBox().w + 100, 0);
+      pointB.transform(movePointB.toTransformString());
+      pointB.node.classList.add('pointB');
+
+      var pointBHighlightRow1 = c.rect(pointB.select('.row1').getBBox().cx - 50, pointB.select('.row1').getBBox().y, 100, pointB.select('.row1').getBBox().h * 1.25);
+      pointB.add(pointBHighlightRow1);
+      pointBHighlightRow1.insertBefore(pointB.select('.row1'));
+      pointBHighlightRow1.attr({fill: 'none'});
+      pointBHighlightRow1.node.classList.add('highlight-pointB1');
+
+      var pointBHighlightRow2 = c.rect(pointB.select('.row2').getBBox().cx - 50, pointB.select('.row2').getBBox().y, 100, pointB.select('.row2').getBBox().h * 1.25);
+      pointB.add(pointBHighlightRow2);
+      pointBHighlightRow2.insertBefore(pointB.select('.row2'));
+      pointBHighlightRow2.attr({fill: 'none'});
+      pointBHighlightRow2.node.classList.add('highlight-pointB2');
+
+      var pointBHighlightRow3 = c.rect(pointB.select('.row3').getBBox().cx - 50, pointB.select('.row3').getBBox().y, 100, pointB.select('.row3').getBBox().h * 1.25);
+      pointB.add(pointBHighlightRow3);
+      pointBHighlightRow3.insertBefore(pointB.select('.row3'));
+      pointBHighlightRow3.attr({fill: 'none'});
+      pointBHighlightRow3.node.classList.add('highlight-pointB3');
+
+      var matrixMultElem = c.group(matrixElem, mult, pointA, equals, pointB);
+      var fittingMatrix = new Snap.Matrix();
+      fittingMatrix.scale(0.75);
+      matrixMultElem.transform(fittingMatrix.toTransformString());
+
+      return matrixMultElem;
+    };
+
+    var svgMatrixMult2 = function (c, matrixA, matrixB, matrixAB) {
+      var matrixAElem = svgMatrix(c, matrixA);
+
+      var row, highlightrow, col;
+      for(var i = 0; i < matrixA.length; i++) {
+        row = matrixAElem.select('.row'+(i+1));
+        highlightrow = matrixAElem.rect(row.getBBox().x, row.getBBox().y, row.getBBox().w, row.getBBox().h);
+        highlightrow.insertBefore(row);
+        highlightrow.attr({fill: 'none'});
+        highlightrow.node.classList.add('highlightA'+(i+1));
+      }
+
+      var mult = c.circle(matrixAElem.getBBox().w + 30, matrixAElem.getBBox().cy, 10);
+      mult.attr({fill: '#fff'});
+
+      var matrixBElem = svgMatrix(c, matrixB);
+      for(var j = 0; j < matrixB.length; j++) {
+        col = matrixBElem.select('.row1 .elem'+(j+1));
+        highlightrow = matrixBElem.rect(col.getBBox().cx - 50, col.getBBox().y, 100, matrixBElem.select('.row1').getBBox().h * 3.75);
+        highlightrow.insertBefore(matrixBElem.select('.row1'));
+        highlightrow.attr({fill: 'none'});
+        highlightrow.node.classList.add('highlightB'+(j+1));
+      }
+
+      var moveMatrixB = new Snap.Matrix();
+      moveMatrixB.translate(matrixAElem.getBBox().w + 50, 0);
+      matrixBElem.transform(moveMatrixB.toTransformString());
+
+      var equals = c.text(matrixAElem.getBBox().w + 15, matrixAElem.getBBox().y2 + 60,'=');
+      equals.attr({
+        fill: '#fff',
+        fontSize: '50px',
+        fontFamily: 'monospace'
+      });
+
+
+      var matrixABElem = svgMatrix(c, matrixAB);
+      var el;
+      for(var k = 0; k < matrixAB.length; k++) {
+        for(var l = 0; l < matrixAB[0].length; l++) {
+          el = matrixABElem.select('.row'+(k+1)+' .elem'+(l+1));
+          highlightrow = matrixABElem.rect(el.getBBox().cx - 50, el.getBBox().y, 100, matrixABElem.select('.row'+(k+1)).getBBox().h * 1.25);
+          highlightrow.insertBefore(matrixABElem.select('.row'+(k+1)));
+          highlightrow.attr({fill: 'none'});
+          highlightrow.node.classList.add('highlightAB'+(k+1)+(l+1));
+        }
+      }
+
+      var moveMatrixAB = new Snap.Matrix();
+      moveMatrixAB.translate(matrixAElem.getBBox().w / 2 + 25, matrixAElem.getBBox().h + 80);
+      matrixABElem.transform(moveMatrixAB.toTransformString());
+
+      var matrixMultElem = c.group(matrixAElem, mult, matrixBElem, equals, matrixABElem);
+      var fittingMatrix = new Snap.Matrix();
+      fittingMatrix.scale(0.75);
+      matrixMultElem.transform(fittingMatrix.toTransformString());
+
+      return matrixMultElem;
+    };
+  </script>
+</head>
+
+<body>
+
+  <div class="reveal">
+
+    <div class="slides">
+
+      <section>
+        <h2>Making Math Come Alive With JavaScript</h2>
+        <p>Scotland JS 2014</p>
+        <p>Stian Veum Møllersen / <a href="http://twitter.com/mollerse">@mollerse</a></p>
+      </section>
+
+      <section>
+        <h2>Transforms</h2>
+        <aside class="notes">
+          <p>Lets talk about transforms.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Transforms</h3>
+        <div class="canvas">
+          <svg>
+            <rect id="box1" x="0" y="0" height="100" width="100"/>
+          </svg>
+        </div>
+        <div class="code">
+          <div class="fragment code-fragment" data-fragment-index="1" data-func="1">
+            <pre><code class="javascript big">translate(175, 200);</code></pre>
+          </div>
+          <div class="fragment code-fragment" data-fragment-index="2" data-func="2">
+            <pre><code class="javascript big">translate(175, 200);
+scale(2);</code></pre>
+          <div class="fragment code-fragment" data-fragment-index="3" data-func="3">
+            <pre><code class="javascript big">translate(175, 200);
+scale(2);
+rotate(45);</code></pre>
+          </div>
+          <div class="fragment code-fragment" data-fragment-index="4" data-func="4">
+            <pre><code class="javascript big">translate(175, 200);
+scale(2);
+rotate(45);
+skew(15,15);</code></pre>
+          </div>
+        </div>
+        <aside class="notes">
+          <p>Transforms enable us to alter the position and shape of objects. We can move objects in space <b>F</b>. We can scale objects <b>F</b> We can even rotate <b>F</b> and skew, or shear, objects.<b>F</b> We can use one or combine many. Give objects new shapes or throw them from side to side.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Whats actually going on here?</h3>
+        <aside class="notes">
+          <p>So, what is actually going on here? We can observe an effect, but what is happening under the hood.</p>
+
+          <p>Why does an object morph into that exact shape when a transform is applied? Why does the application of a transform give different results when applied after another transform rather than alone? In order to figure this out, we will need to look at some math.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>The Matrix</h3>
+        <div class="fragment" data-func="9">
+          <svg width="685" height="230" id="matrix1"></svg>
+        </div>
+        <aside class="notes">
+          <p>First we need to look at this thing called a matrix. <b>F</b> Not the movie, but the mathematical concept. A matrix is a rectangular array of values, arranged in rows and cols. Matrices have many usages and they form the basis for many calculations. They even have their own calculus.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>The transform is a matrix</h3>
+        <p>Defines the mapping of one set of coordinates to another</p>
+        <aside class="notes">
+          <p>The underlying representation of a transform is a matrix. Applying a matrix to the coordinates of a point produces a new set of coordinates which decides the new location of the point.</p>
+
+          <p>When we transform objects, we are actually transforming each of the points that define the object using the same transformation matrix. When the points that define the object change their location, the object changes its form and location.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Matrix multiplication</h3>
+        <p>Mapping from <code>[x, y]</code> to <code>[x', y']</code></p>
+        <div class="fragment" data-func="10">
+          <svg id="t-matrix"></svg>
+        </div>
+        <div class="fragment row1" data-func="11">
+          <code>a*x + b*y + tx = x'</code>
+        </div>
+        <div class="fragment row2" data-func="12">
+          <code>c*x + d*y + ty = y'</code>
+        </div>
+        <div class="fragment row3" data-func="13">
+          <code>0*x + 0*y + 1 = 1</code>
+        </div>
+        <div class="fragment" data-func="14">
+        </div>
+        <aside class="notes">
+          <p>To map from once space to another we multiply the original point with a transform defined in a matrix <b>F</b>. The coordinates of the new point is defined by multiplying the transform with the original coordinates. We can break this multiplication down into three pieces.</p>
+
+          <p>The first piece defines the x-coordinate of the new point <b>F</b>. The first row of the transformation matrix is dot-multiplied with the original point. We repeat this for the the y-coordinate <b>F</b> and the perspective component. <b>F</b></p>
+
+          <p>We now have the complete set of equations we need solve to get the new coordinates of the point after the transformation has been applied. We can see how each value in the matrix affects the coordinate of the new point. We will come back to this later.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Why does 2D points have 3 values?</h3>
+        <p>We are using homogenous coordinates</p>
+        <aside class="notes">
+          <p>After the previous slide, you might have some questions perculating in the back of your heads. Why do we have 3 values defining a point and why is the 3rd component set to 1?</p>
+
+          <p>When dealing with graphics we use a representation for coordinates called homogenous coordinates. In this representation we include a value to represent the perspective of the canvas. Varying this value shrinks or enlarges the projected canvas, but it does not affect the relative distances in the image. To keep things ordered and easier to deal with we keep this component at the value 1.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Why 3x3 matrices?</h3>
+        <p>We need 3 columns to enable translation</p>
+        <aside class="notes">
+          <p>You might also wonder why we are using 3x3 matrices for defining 2D transforms. The reason is that in order to do translation-transforms we need to have one more column than we have dimensions. This means that we need 3 columns for a 2D translation.</p>
+
+          <p>The matrix calculus says that we can only multiply two matrices when the second matrix has the same number of rows as the first matrix has number of columns. This is where homogenous coordinates come in. Homogenous coordinates have three rows, so we can use them with the translation transform.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Why is the 3rd row <code>0 0 1</code>?</h3>
+        <p>To avoid messing with the perspective component</p>
+        <aside class="notes">
+          <p>So why are we not doing anything in the 3rd row of the transformation matrix? This is so that we don't affect the perspective-component of the homogenous coordinate, the 3rd component in the point.</p>
+
+          <p>In most cases this is not something we want to fiddle with. In fact, none of the low-level native 2Dmatrix APIs exposes the ability to manipulate this row.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Coordinate systems</h3>
+        <p>Transformation context</p>
+        <svg width="500px" height="500px" class="coordinate-system">
+          <rect x="100" y="100" width="300" height="300" />
+          <g class="fragment">
+            <text x="55" y="85">(0,0)</text>
+          </g>
+          <g class="axes">
+            <path d="M100,100L100,400M100,400L85,385M100,400L115,385"/>
+            <text x="360" y="95">X</text>
+            <path d="M100,100L400,100M400,100L385,85M400,100L385,115"/>
+            <text x="75" y="375">Y</text>
+          </g>
+          <g class="point fragment">
+            <circle cx="250" cy="250" r="5" />
+            <text x="170" y="235">(150,150)</text>
+          </g>
+        </svg>
+        <aside class="notes">
+          <p>The second piece of the puzzle is the coordinate system. The coordinate system forms the context for our transforms.</p>
+
+          <p>The way most coordinate systems are layed out when working with computer graphics is with the origin in the top left corner.<b>F</b> This allows us to define points within the system with positive x and y coordinates.<b>F</b> This way we won't have to deal with negative coordinates unless we venture outside the context.</p>
+        </aside>
+      </section>
+
+      <section id="origin-scale1">
+        <h3>Transform origin</h3>
+        <svg width="500px" height="500px" class="coordinate-system">
+          <rect x="100" y="100" width="300" height="300" />
+          <text x="55" y="85">(0,0)</text>
+          <g class="axes">
+            <path d="M100,100L100,400M100,400L85,385M100,400L115,385"/>
+            <text x="360" y="95">X</text>
+            <path d="M100,100L400,100M400,100L385,85M400,100L385,115"/>
+            <text x="75" y="375">Y</text>
+          </g>
+          <g class="point">
+            <rect x="135" y="135" width="30" height="30"/>
+            <g class="text">
+              <text x="160" y="200">(65,65)</text>
+            </g>
+          </g>
+        </svg>
+        <p class="fragment" data-func="19"><code>scale(2);</code></p>
+        <aside class="notes">
+          <p>The origin of the coordinate system decides the coordinates of a point. The coordinates of a point decides what the outcome of a transform will look like.</p>
+
+          <p>Here we have a box and the lower right corner of the box has the coordinates 65,65 within the coordinate system. If we apply a scale-transform of 2 <b>F</b> to the box we see that the coordinates of the point change accordingly.</p>
+        </aside>
+      </section>
+
+      <section id="origin-scale2">
+        <h3>Changing the origin</h3>
+        <svg width="500px" height="500px" class="coordinate-system">
+          <rect x="100" y="100" width="300" height="300" />
+          <g class="point">
+            <rect x="135" y="135" width="30" height="30"/>
+            <g class="text">
+              <text x="160" y="200">(15,15)</text>
+            </g>
+          </g>
+          <g transform="translate(50, 50)" class="axes">
+            <path d="M100,100L100,400M100,400L85,385M100,400L115,385"/>
+            <text x="360" y="95">X</text>
+            <path d="M100,100L400,100M400,100L385,85M400,100L385,115"/>
+            <text x="75" y="375">Y</text>
+          </g>
+        </svg>
+        <p class="fragment" data-func="20"><code>scale(2);</code></p>
+        <aside class="notes">
+          <p>If we change the origin slightly, for instance to the middle of the box, we get a different effect of applying the same transform.<b>F</b> This effect is not entirely un-expected, since the coordinate of the lower right corner of the box changed when we changed the origin of the coordinate system.</p>
+
+           <p>The different ways of doing graphics on the web has different ways of setting the origin of the coordinate system. CSS places origin relative to the object, in the middle by default, but Canvas and SVG places origin in the upper left corner of the container to the object.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Representation of transforms</h3>
+        <p>From shorthand to matrix representation</p>
+        <aside class="notes">
+          <p>Now that we have the theoretical foundation, lets revisit the shorthand transformation functions I showed at the beginning and look at how they relate to the underlying matrix representation.</p>
+
+          <p>We can think of the matrix representation of a transform as analogous to the hexcode of a color. We can do some things with shorthands, but it we really want to have the power and freedom we need to access the underlying representation.</p>
+        </aside>
+      </section>
+
+      <section data-state="translate-matrix">
+        <h3>Translate</h3>
+        <p>translate(x,y)</p>
+        <div>
+          <svg width="685" height="230" id="matrix2"></svg>
+        </div>
+        <aside class="notes">
+          <p>The translation transformation works by adding a value to the existing value of either the x or the y coordinate. The values are located at the upper two rows of the 3rd column in a transform matrix.</p>
+        </aside>
+      </section>
+
+      <section data-state="translate-example">
+        <h3>Translate</h3>
+        <p>translate(<input id="translate-matrix-x" type="number" value="100"/>,<input id="translate-matrix-y" type="number" value="100"/>)</p>
+          <div class="code code-transparent">
+            <svg id="translate-matrix"></svg>
+          </div>
+          <div class="canvas">
+            <svg>
+              <rect id="translate-matrix-box" x="0" y="0" height="100" width="100"/>
+            </svg>
+          </div>
+          <aside class="notes">
+            <p>The effect of a transformation matrix is pretty straight forward. As expected the object moves a set distance along either the x or the y axis when the values change.</p>
+          </aside>
+      </section>
+
+      <section data-state="scale-matrix">
+        <h3>Scale</h3>
+        <p>scale(sx, sy)</p>
+        <div>
+          <svg width="685" height="230" id="matrix3"></svg>
+        </div>
+        <aside class="notes">
+          <p>The scale transform works by multiplying the value of the x and y coordinate by a factor. The scaling factors are located along the diagonal of the transform matrix.</p>
+        </aside>
+      </section>
+
+      <section data-state="scale-example">
+        <h3>Scale</h3>
+        <p>scale(<input id="scale-matrix-x" type="number" value="1"/>,<input id="scale-matrix-y" type="number" value="1"/>)</p>
+          <div class="code code-transparent">
+            <svg id="scale-matrix"></svg>
+          </div>
+          <div class="canvas">
+            <svg>
+              <rect id="scale-matrix-box" x="0" y="0" height="100" width="100"/>
+            </svg>
+          </div>
+          <aside class="notes">
+            <p>When changing the scale, the coordinates of the point is multiplied by the scaling factor resulting in the object increasing in size along the x or the y axis.</p>
+          </aside>
+      </section>
+
+      <section data-state="rotate-matrix">
+        <h3>Rotate</h3>
+        <p>rotate(a)</p>
+        <div>
+          <svg width="685" height="230" id="matrix4"></svg>
+        </div>
+        <aside class="notes">
+          <p>The rotation transform works by moving both the x and the y component of a point either clockwise or counterclockwise by a value. This value is decided by the trigonometric functions in the upper left corner of the transform matrix.</p>
+
+          <p>These functions are chosen so that the points move along the edge of a circle that has its center at the origin of the coordinate system.</p>
+        </aside>
+      </section>
+
+      <section data-state="rotate-example">
+        <h3>Rotate</h3>
+        <p>rotate(<input id="rotate-matrix-a" type="number" value="0"/>deg)</p>
+          <div class="code code-transparent">
+            <svg id="rotate-matrix"></svg>
+          </div>
+          <div class="canvas">
+            <svg>
+              <rect id="rotate-matrix-box" x="0" y="0" height="100" width="100"/>
+            </svg>
+          </div>
+          <aside class="notes">
+            <p>In this demonstration i have set the origin of the coordinate system to be in the middle, so we can observe the rotation of the object around its center when the values change.</p>
+          </aside>
+      </section>
+
+
+      <section data-state="skew-matrix">
+        <h3>Skew</h3>
+        <p>skew(a, b)</p>
+        <div>
+          <svg width="685" height="230" id="matrix5"></svg>
+        </div>
+        <aside class="notes">
+          <p>The skew transform works by moving the x-coordinate by a factor of the y coordinate, and vice versa for the y-coordinate. Very similar to the scale transform.</p>
+
+          <p>The factor is decided by using the tangent function. This is because we want to move the x or y coordinate in such a way that angle of the new position to the opposite axis changes by an angle of a or b from the previous position.</p>
+        </aside>
+      </section>
+
+      <section data-state="skew-example">
+        <h3>Skew</h3>
+        <p>Skew(<input id="skew-matrix-x" type="number" value="0"/>deg,<input id="skew-matrix-y" type="number" value="0"/>deg)</p>
+        <div class="code code-transparent">
+          <svg id="skew-matrix"></svg>
+        </div>
+        <div class="canvas">
+          <svg>
+            <rect id="skew-matrix-box" x="0" y="0" height="100" width="100"/>
+          </svg>
+        </div>
+        <aside class="notes">
+          <p>Here we can see the X coordinates of the points shifting and forming an angle of A degrees with the y-axis. And vice versa for the y-coordinates.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Composing transforms</h3>
+        <p>Matrix multiplication</p>
+        <aside class="notes">
+          <p>We have seen how transforms affect the object independently, but what if we want to apply more than one transform? What is the outcome of the composition? To answer this we need to take a look at some properties of matrix multiplication.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Matrix multiplication is associative</h3>
+        <p><b>B</b> &sdot; (<b>A</b> &sdot; x&#8407;) = (<b>B</b> &sdot; <b>A</b>) &sdot; x&#8407;</p>
+        <aside class="notes">
+          <p>One of the great things about matrix multiplication is that it is associative. This means that applying multiple transforms to a point is the same as applying the product of all the transforms to the point.</p>
+
+          <p>And that means that the combined transformation matrix can be calculated up front, which is more performant for the computer. We can also invert the entire transformation with one operation.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Matrix multiplication is not commutative</h3>
+        <p>Order matters</p>
+        <p><b>B</b> &sdot; <b>A</b> &sdot; x&#8407; &#8800; <b>A</b> &sdot; <b>B</b> &sdot; x&#8407;</p>
+        <aside class="notes">
+          <p>But we need to remember that matrix multiplication is not commutative. This means that the order in which transformations are applied matters. A then B produces a different outcome than B then A. This is the thing that makes complex transformations harder to reason about.</p>
+        </aside>
+      </section>
+
+      <section data-state="scale-translate" id="scale-translate-slide">
+        <h3>Scale then translate</h3>
+        <p><code>scale(2) translate(15, 15)</code></p>
+        <div>
+          <svg id="scale-translate"></svg>
+        </div>
+        <div class="fragment" data-func="15"></div>
+        <div class="fragment" data-func="16"></div>
+        <aside class="notes">
+          <p>The first example of transformation composition is a scale transform followed by a translate transform.</p>
+
+          <p>If we look at the row-col pairs that define the translation part of the final matrix we see that the final translation is 30 in the x-direction <b>F</b> and 30 in the y-direction <b>F</b>.</p>
+        </aside>
+      </section>
+
+      <section data-state="translate-scale" id="translate-scale-slide">
+        <h3>Translate then scale</h3>
+        <p><code>translate(15, 15) scale(2)</code></p>
+        <div>
+          <svg id="translate-scale"></svg>
+        </div>
+        <div class="fragment" data-func="17"></div>
+        <div class="fragment" data-func="18"></div>
+        <aside class="notes">
+          <p>If we reverse the order of the transforms, we get a different outcome.</p>
+
+          <p>We look at the transformation part again and notice that the transformation in the x-direction is now 15 <b>F</b> and the same for the y-direction <b>F</b>.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>Summary</h3>
+        <p class="fragment">Transforms are represented as matrices</p>
+        <p class="fragment">... that map from one coordinate to another</p>
+        <p class="fragment">... and compose through multiplication</p>
+        <aside class="notes">
+          <p>To wrap this up, heres a quick summary. The transform shorthands we see in web graphics, translate, scale, rotate and skew, are actually shorthands for matrices. <b>F</b> These matrices define the mapping of the current coordinates of a point to the new coordinates <b>F</b> And these transforms compose through multiplication, but remember that the ordering matters.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h3>3D Transforms</h3>
+        <p>The math is the same, "just" one more dimension</p>
+        <aside class="notes">
+          <p>A quick note about 3D transforms. The math is the same, all the same principles apply. But, we have one more dimension so there is more of the math.</p>
+        </aside>
+      </section>
+
+      <section>
+        <h2>Thank you for having me!</h2>
+        <h3><a href="http://www.github.com/mollerse">@mollerse</a></h3>
+        <p><a href="mailto:stian.moellersen@gmail.com">stian.moellersen@gmail.com</a></p>
+      </section>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    Reveal.initialize({
+      height: 720,
+      width: 1280,
+      controls: false,
+      progress: false,
+      history: true,
+      center: true,
+      transition: 'none',
+      transitionSpeed: 'fast',
+      dependencies: [
+        { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; }},
+        { src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } },
+        { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad();}}
+      ]
+    });
+    var slideEvents = {
+      1: {
+        hide: function () {
+          document.querySelector('#box1').classList.remove('transform1');
+        },
+        show: function () {
+          document.querySelector('#box1').classList.add('transform1');
+        }
+      },
+      2: {
+        hide: function () {
+          document.querySelector('#box1').classList.remove('transform2');
+          document.querySelector('#box1').classList.add('transform1');
+        },
+        show: function () {
+          document.querySelector('#box1').classList.remove('transform1');
+          document.querySelector('#box1').classList.add('transform2');
+        }
+      },
+      3: {
+        hide: function () {
+          document.querySelector('#box1').classList.remove('transform3');
+          document.querySelector('#box1').classList.add('transform2');
+        },
+        show: function () {
+          document.querySelector('#box1').classList.remove('transform2');
+          document.querySelector('#box1').classList.add('transform3');
+        }
+      },
+      4: {
+        hide: function () {
+          document.querySelector('#box1').classList.remove('transform4');
+          document.querySelector('#box1').classList.add('transform3');
+        },
+        show: function () {
+          document.querySelector('#box1').classList.remove('transform3');
+          document.querySelector('#box1').classList.add('transform4');
+        }
+      },
+      9: {
+        show: (function () {
+          var shown = false;
+          return function () {
+            if(shown) return;
+            shown = true;
+            var c = Snap('#matrix1');
+            var matrix = svgMatrix(c, [[1,0,0], [0,1,0], [0,0,1]]);
+            c.node.style.width = c.getBBox().w + 10;
+            c.node.style.height = c.getBBox().h + 10;
+          };
+        })()
+      },
+      10: {
+        show: (function () {
+          var shown = false;
+          return function () {
+            if(shown) return;
+            shown = true;
+            var c = Snap('#t-matrix');
+            var matrix = svgMatrixMult(c, [['a','b','tx'], ['c','d','ty'], [0,0,1]], [['x'], ['y'], [1]]);
+            c.node.style.width = matrix.getBBox().w + 10;
+            c.node.style.height = matrix.getBBox().h + 10;
+          };
+        })()
+      },
+      11:{
+        hide: function () {
+          document.querySelector('.highlight1').classList.remove('highlighted');
+          document.querySelector('.highlight-pointA').classList.remove('highlighted1');
+          document.querySelector('.highlight-pointB1').classList.remove('highlighted');
+        },
+        show: function () {
+          document.querySelector('.fragment.row1').classList.add('highlighted');
+          document.querySelector('.highlight1').classList.add('highlighted');
+          document.querySelector('.highlight-pointA').classList.add('highlighted1');
+          document.querySelector('.highlight-pointB1').classList.add('highlighted');
+        }
+      },
+      12:{
+        hide: function () {
+          document.querySelector('.fragment.row1').classList.add('highlighted');
+          document.querySelector('.highlight1').classList.add('highlighted');
+          document.querySelector('.highlight-pointA').classList.add('highlighted1');
+          document.querySelector('.highlight-pointB1').classList.add('highlighted');
+
+          document.querySelector('.highlight2').classList.remove('highlighted');
+          document.querySelector('.highlight-pointA').classList.remove('highlighted2');
+          document.querySelector('.highlight-pointB2').classList.remove('highlighted');
+        },
+        show: function () {
+          document.querySelector('.fragment.row1').classList.remove('highlighted');
+          document.querySelector('.highlight1').classList.remove('highlighted');
+          document.querySelector('.highlight-pointA').classList.remove('highlighted1');
+          document.querySelector('.highlight-pointB1').classList.remove('highlighted');
+
+          document.querySelector('.fragment.row2').classList.add('highlighted');
+          document.querySelector('.highlight2').classList.add('highlighted');
+          document.querySelector('.highlight-pointA').classList.add('highlighted2');
+          document.querySelector('.highlight-pointB2').classList.add('highlighted');
+        }
+      },
+      13:{
+        hide: function () {
+          document.querySelector('.fragment.row2').classList.add('highlighted');
+          document.querySelector('.highlight2').classList.add('highlighted');
+          document.querySelector('.highlight-pointA').classList.add('highlighted2');
+          document.querySelector('.highlight-pointB2').classList.add('highlighted');
+
+          document.querySelector('.highlight3').classList.remove('highlighted');
+          document.querySelector('.highlight-pointA').classList.remove('highlighted3');
+          document.querySelector('.highlight-pointB3').classList.remove('highlighted');
+        },
+        show: function () {
+          document.querySelector('.fragment.row2').classList.remove('highlighted');
+          document.querySelector('.highlight2').classList.remove('highlighted');
+          document.querySelector('.highlight-pointA').classList.remove('highlighted2');
+          document.querySelector('.highlight-pointB2').classList.remove('highlighted');
+
+          document.querySelector('.fragment.row3').classList.add('highlighted');
+          document.querySelector('.highlight3').classList.add('highlighted');
+          document.querySelector('.highlight-pointA').classList.add('highlighted3');
+          document.querySelector('.highlight-pointB3').classList.add('highlighted');
+        }
+      },
+      14: {
+        hide: function () {
+          document.querySelector('.fragment.row3').classList.add('highlighted');
+          document.querySelector('.highlight3').classList.add('highlighted');
+          document.querySelector('.highlight-pointA').classList.add('highlighted3');
+          document.querySelector('.highlight-pointB3').classList.add('highlighted');
+        },
+        show: function () {
+          document.querySelector('.fragment.row3').classList.remove('highlighted');
+          document.querySelector('.highlight3').classList.remove('highlighted');
+          document.querySelector('.highlight-pointA').classList.remove('highlighted3');
+          document.querySelector('.highlight-pointB3').classList.remove('highlighted');
+        }
+      },
+      15: {
+        hide: function () {
+          document.querySelector('#scale-translate-slide .highlightA1').classList.remove('highlighted');
+          document.querySelector('#scale-translate-slide .highlightB3').classList.remove('highlighted');
+          document.querySelector('#scale-translate-slide .highlightAB13').classList.remove('highlighted');
+
+        },
+        show: function () {
+          document.querySelector('#scale-translate-slide .highlightA1').classList.add('highlighted');
+          document.querySelector('#scale-translate-slide .highlightB3').classList.add('highlighted');
+          document.querySelector('#scale-translate-slide .highlightAB13').classList.add('highlighted');
+        }
+      },
+      16: {
+        hide: function () {
+          document.querySelector('#scale-translate-slide .highlightA1').classList.add('highlighted');
+          document.querySelector('#scale-translate-slide .highlightB3').classList.add('highlighted');
+          document.querySelector('#scale-translate-slide .highlightAB13').classList.add('highlighted');
+          document.querySelector('#scale-translate-slide .highlightA2').classList.remove('highlighted2');
+          document.querySelector('#scale-translate-slide .highlightB3').classList.remove('highlighted2');
+          document.querySelector('#scale-translate-slide .highlightAB23').classList.remove('highlighted2');
+
+        },
+        show: function () {
+          document.querySelector('#scale-translate-slide .highlightA1').classList.remove('highlighted');
+          document.querySelector('#scale-translate-slide .highlightB3').classList.remove('highlighted');
+          document.querySelector('#scale-translate-slide .highlightAB13').classList.remove('highlighted');
+          document.querySelector('#scale-translate-slide .highlightA2').classList.add('highlighted2');
+          document.querySelector('#scale-translate-slide .highlightB3').classList.add('highlighted2');
+          document.querySelector('#scale-translate-slide .highlightAB23').classList.add('highlighted2');
+        }
+      },
+      17: {
+        hide: function () {
+          document.querySelector('#translate-scale-slide .highlightA1').classList.remove('highlighted');
+          document.querySelector('#translate-scale-slide .highlightB3').classList.remove('highlighted');
+          document.querySelector('#translate-scale-slide .highlightAB13').classList.remove('highlighted');
+
+        },
+        show: function () {
+          document.querySelector('#translate-scale-slide .highlightA1').classList.add('highlighted');
+          document.querySelector('#translate-scale-slide .highlightB3').classList.add('highlighted');
+          document.querySelector('#translate-scale-slide .highlightAB13').classList.add('highlighted');
+        }
+      },
+      18: {
+        hide: function () {
+          document.querySelector('#translate-scale-slide .highlightA1').classList.add('highlighted');
+          document.querySelector('#translate-scale-slide .highlightB3').classList.add('highlighted');
+          document.querySelector('#translate-scale-slide .highlightAB13').classList.add('highlighted');
+          document.querySelector('#translate-scale-slide .highlightA2').classList.remove('highlighted2');
+          document.querySelector('#translate-scale-slide .highlightB3').classList.remove('highlighted2');
+          document.querySelector('#translate-scale-slide .highlightAB23').classList.remove('highlighted2');
+
+        },
+        show: function () {
+          document.querySelector('#translate-scale-slide .highlightA1').classList.remove('highlighted');
+          document.querySelector('#translate-scale-slide .highlightB3').classList.remove('highlighted');
+          document.querySelector('#translate-scale-slide .highlightAB13').classList.remove('highlighted');
+          document.querySelector('#translate-scale-slide .highlightA2').classList.add('highlighted2');
+          document.querySelector('#translate-scale-slide .highlightB3').classList.add('highlighted2');
+          document.querySelector('#translate-scale-slide .highlightAB23').classList.add('highlighted2');
+        }
+      },
+      19: {
+        hide: function () {
+          document.querySelector('#origin-scale1 .point').classList.remove('scale-transform');
+          setTimeout(function () {
+            document.querySelector('#origin-scale1 .point text').textContent = "("+65+","+65+")";
+          }, 700);
+
+        },
+        show: function () {
+          document.querySelector('#origin-scale1 .point').classList.add('scale-transform');
+          setTimeout(function () {
+            document.querySelector('#origin-scale1 .point text').textContent = "("+130+","+130+")";
+          }, 700);
+        }
+      },
+      20: {
+        hide: function () {
+          document.querySelector('#origin-scale2 .point').classList.remove('scale-transform');
+          setTimeout(function () {
+            document.querySelector('#origin-scale2 .point text').textContent = "("+15+","+15+")";
+          }, 500);
+
+        },
+        show: function () {
+          document.querySelector('#origin-scale2 .point').classList.add('scale-transform');
+          setTimeout(function () {
+            document.querySelector('#origin-scale2 .point text').textContent = "("+30+","+30+")";
+          }, 500);
+        }
+      }
+    };
+
+    Reveal.addEventListener('fragmentshown', function(event) {
+      var func = event.fragment.getAttribute('data-func');
+      if(!func || !slideEvents[func].show) return;
+      slideEvents[func].show();
+    });
+
+    Reveal.addEventListener('fragmenthidden', function(event) {
+      var func = event.fragment.getAttribute('data-func');
+      if(!func || !slideEvents[func].hide) return;
+      slideEvents[func].hide();
+    });
+
+    Reveal.addEventListener('translate-matrix', function () {
+      var c = Snap('#matrix2');
+      if(c.select('g')) return;
+      var matrix = svgMatrix(c, [['1','0','x'], ['0','1','y'], [0,0,1]]);
+      c.node.style.width = c.getBBox().w + 10;
+      c.node.style.height = c.getBBox().h + 10;
+    });
+
+    Reveal.addEventListener('translate-example', function () {
+      var c = Snap('#translate-matrix');
+      var matrix = c.select('g');
+      if(!matrix) {
+        matrix = svgMatrix(c, [[1,0,0], [0,1,0], [0,0,1]]);
+      }
+
+      var box = document.querySelector('#translate-matrix-box');
+
+      var x = Bacon.fromEventTarget(document.querySelector('#translate-matrix-x'), 'keyup');
+      var xVal = x.map('.target.value').toProperty(document.querySelector('#translate-matrix-x').value);
+
+      var y = Bacon.fromEventTarget(document.querySelector('#translate-matrix-y'), 'keyup');
+      var yVal = y.map('.target.value').toProperty(document.querySelector('#translate-matrix-y').value);
+
+      var txElem = document.querySelector('#translate-matrix .row1 .elem3');
+      var tyElem = document.querySelector('#translate-matrix .row2 .elem3');
+
+      xVal.onValue(function (v) {
+        txElem.textContent = pad(v);
+      });
+
+      yVal.onValue(function (v) {
+        tyElem.textContent = pad(v);
+      });
+
+      var xy = Bacon.combineTemplate({
+        x: xVal,
+        y: yVal
+      });
+      xy.onValue(function (v) {
+        box.style.transform = 'matrix(1,0,0,1,' + v.x + ', ' + v.y + ')';
+        box.style['-webkit-transform'] = 'matrix(1,0,0,1,' + v.x + ', ' + v.y + ')';
+      });
+    });
+
+    Reveal.addEventListener('scale-matrix', function () {
+      var c = Snap('#matrix3');
+      if(c.select('g')) return;
+      var matrix = svgMatrix(c, [['sx','0','0'], ['0','sy','0'], [0,0,1]]);
+      c.node.style.width = c.getBBox().w + 10;
+      c.node.style.height = c.getBBox().h + 10;
+    });
+
+    Reveal.addEventListener('scale-example', function () {
+      var c = Snap('#scale-matrix');
+      var matrix = c.select('g');
+      if(!matrix) {
+        matrix = svgMatrix(c, [[1,0,0], [0,1,0], [0,0,1]]);
+      }
+
+      var box = document.querySelector('#scale-matrix-box');
+      box.setAttribute('x', box.parentElement.parentElement.offsetWidth / 2 - 50);
+      box.setAttribute('y', box.parentElement.parentElement.offsetHeight / 2 - 50);
+      box.style['-webkit-transform-origin'] = ''+(box.parentElement.parentElement.offsetWidth / 2)+' '+(box.parentElement.parentElement.offsetHeight / 2);
+      box.style['transform-origin'] = ''+(box.parentElement.parentElement.offsetWidth / 2)+' '+(box.parentElement.parentElement.offsetHeight / 2);
+
+      var x = Bacon.fromEventTarget(document.querySelector('#scale-matrix-x'), 'keyup');
+      var xVal = x.map('.target.value').toProperty(document.querySelector('#scale-matrix-x').value);
+
+      var y = Bacon.fromEventTarget(document.querySelector('#scale-matrix-y'), 'keyup');
+      var yVal = y.map('.target.value').toProperty(document.querySelector('#scale-matrix-y').value);
+
+      var txElem = document.querySelector('#scale-matrix .row1 .elem1');
+      var tyElem = document.querySelector('#scale-matrix .row2 .elem2');
+
+      xVal.onValue(function (v) {
+        txElem.textContent = pad(v);
+      });
+
+      yVal.onValue(function (v) {
+        tyElem.textContent = pad(v);
+      });
+
+      var xy = Bacon.combineTemplate({
+        x: xVal,
+        y: yVal
+      });
+      xy.onValue(function (v) {
+        box.style.transform = 'matrix('+v.x+',0,0,'+v.y+',0,0)';
+        box.style['-webkit-transform'] = 'matrix('+v.x+',0,0,'+v.y+',0,0)';
+      });
+    });
+
+    Reveal.addEventListener('rotate-matrix', function () {
+      var c = Snap('#matrix4');
+      if(c.select('g')) return;
+      var matrix = svgMatrix(c, [['cos(a)','-sin(a)','0'], ['sin(a)','cos(a)','0'], [0,0,1]]);
+      c.node.style.width = c.getBBox().w + 10;
+      c.node.style.height = c.getBBox().h + 10;
+    });
+
+    Reveal.addEventListener('rotate-example', function () {
+      var c = Snap('#rotate-matrix');
+      var matrix = c.select('g');
+      if(!matrix) {
+        matrix = svgMatrix(c, [[1,0,0], [0,1,0], [0,0,1]]);
+      }
+
+      var box = document.querySelector('#rotate-matrix-box');
+      box.setAttribute('x', box.parentElement.parentElement.offsetWidth / 2 - 50);
+      box.setAttribute('y', box.parentElement.parentElement.offsetHeight / 2 - 50);
+      box.style['-webkit-transform-origin'] = ''+(box.parentElement.parentElement.offsetWidth / 2)+' '+(box.parentElement.parentElement.offsetHeight / 2);
+      box.style['transform-origin'] = ''+(box.parentElement.parentElement.offsetWidth / 2)+' '+(box.parentElement.parentElement.offsetHeight / 2);
+
+      var x = Bacon.fromEventTarget(document.querySelector('#rotate-matrix-a'), 'keyup');
+      var xVal = x.map('.target.value').toProperty(document.querySelector('#rotate-matrix-a').value);
+
+      var elem11 = document.querySelector('#rotate-matrix .row1 .elem1');
+      var elem12 = document.querySelector('#rotate-matrix .row1 .elem2');
+      var elem21 = document.querySelector('#rotate-matrix .row2 .elem1');
+      var elem22 = document.querySelector('#rotate-matrix .row2 .elem2');
+
+      xVal.onValue(function (v) {
+        elem11.textContent = pad('cos('+v+')');
+        elem12.textContent = pad('-sin('+v+')');
+        elem21.textContent = pad('sin('+v+')');
+        elem22.textContent = pad('cos('+v+')');
+
+        var matrix = 'matrix('+Math.cos(degToRad(v))+','+Math.sin(degToRad(v))+','+(-Math.sin(degToRad(v)))+','+Math.cos(degToRad(v))+',0,0)';
+
+        box.style.transform = matrix;
+        box.style['-webkit-transform'] = matrix;
+      });
+    });
+
+    Reveal.addEventListener('skew-matrix', function () {
+      var c = Snap('#matrix5');
+      if(c.select('g')) return;
+      var matrix = svgMatrix(c, [['1','tan(a)','0'], ['tan(b)','1','0'], [0,0,1]]);
+      c.node.style.width = c.getBBox().w + 10;
+      c.node.style.height = c.getBBox().h + 10;
+    });
+
+    Reveal.addEventListener('skew-example', function () {
+      var c = Snap('#skew-matrix');
+      var matrix = c.select('g');
+      if(!matrix) {
+        matrix = svgMatrix(c, [[1,0,0], [0,1,0], [0,0,1]]);
+      }
+
+      var box = document.querySelector('#skew-matrix-box');
+      box.setAttribute('x', box.parentElement.parentElement.offsetWidth / 2 - 50);
+      box.setAttribute('y', box.parentElement.parentElement.offsetHeight / 2 - 50);
+      box.style['-webkit-transform-origin'] = ''+(box.parentElement.parentElement.offsetWidth / 2)+' '+(box.parentElement.parentElement.offsetHeight / 2);
+      box.style['transform-origin'] = ''+(box.parentElement.parentElement.offsetWidth / 2)+' '+(box.parentElement.parentElement.offsetHeight / 2);
+
+      var x = Bacon.fromEventTarget(document.querySelector('#skew-matrix-x'), 'keyup');
+      var xVal = x.map('.target.value').toProperty(document.querySelector('#skew-matrix-x').value);
+
+      var y = Bacon.fromEventTarget(document.querySelector('#skew-matrix-y'), 'keyup');
+      var yVal = y.map('.target.value').toProperty(document.querySelector('#skew-matrix-y').value);
+
+      var txElem = document.querySelector('#skew-matrix .row1 .elem2');
+      var tyElem = document.querySelector('#skew-matrix .row2 .elem1');
+
+      xVal.onValue(function (v) {
+        txElem.textContent = pad('tan('+v+')');
+      });
+
+      yVal.onValue(function (v) {
+        tyElem.textContent = pad('tan('+v+')');
+      });
+
+      var xy = Bacon.combineTemplate({
+        x: xVal,
+        y: yVal
+      });
+      xy.onValue(function (v) {
+        var matrix = 'matrix(1,'+Math.tan(degToRad(v.y))+','+Math.tan(degToRad(v.x))+',1,0,0)';
+        box.style.transform = matrix;
+        box.style['-webkit-transform'] = matrix;
+      });
+    });
+
+    Reveal.addEventListener('scale-translate', function () {
+      var c = Snap('#scale-translate');
+      if(c.select('g')) return;
+      var matrix = svgMatrixMult2(c, [['2','0','0'], ['0','2','0'], [0,0,1]], [['1','0','15'], ['1','0','15'], ['0','0','1']], [['2','0','30'], ['0','2','30'], ['0','0','1']]);
+      c.node.style.width = c.getBBox().w + 10;
+      c.node.style.height = c.getBBox().h + 10;
+    });
+
+    Reveal.addEventListener('translate-scale', function () {
+      var c = Snap('#translate-scale');
+      if(c.select('g')) return;
+      var matrix = svgMatrixMult2(c, [['1','0','15'], ['0','1','15'], ['0','0','1']], [['2','0','0'], ['0','2','0'], [0,0,1]], [['2','0','15'], ['0','2','15'], ['0','0','1']]);
+      c.node.style.width = c.getBBox().w + 10;
+      c.node.style.height = c.getBBox().h + 10;
+    });
+  </script>
+
+
+  <script type="text/javascript">document.write('<script src="' + (location.protocol || 'http:') + '//' + (location.hostname || 'localhost') + ':35729/livereload.js?snipver=1" type="text/javascript"><\/script>')</script>
+</body>
+</html>
